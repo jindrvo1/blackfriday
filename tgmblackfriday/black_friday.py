@@ -17,9 +17,11 @@ class BlackFridayDataset:
     def __init__(self, path: str, test_path: str = None):
         if path.startswith('gs://'):
             self.gcs_client = storage.Client.create_anonymous_client()
-
-        self.df = self._load_data_file(path)
-        self.df_test = self._load_data_file(test_path) if test_path else None
+            self.df = pd.read_csv(path)
+            self.df_test = pd.read_csv(test_path) if test_path else None
+        else:
+            self.df = self._load_data_file(path)
+            self.df_test = self._load_data_file(test_path) if test_path else None
 
 
     def preprocess_dfs(self, return_res: bool = True) -> None | tuple[pd.DataFrame, pd.DataFrame | None]:
