@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from google.cloud import storage
 
 
 class BlackFridayDataset:
@@ -14,6 +15,9 @@ class BlackFridayDataset:
 
 
     def __init__(self, path: str, test_path: str = None):
+        if path.startswith('gs://'):
+            self.gcs_client = storage.Client()
+
         self.df = self._load_data_file(path)
         self.df_test = self._load_data_file(test_path) if test_path else None
 

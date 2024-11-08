@@ -10,7 +10,10 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pandas>=2.2.3',
-        'scikit-learn>=1.5.2'
+        'scikit-learn>=1.5.2',
+        'google-cloud-storage>=2.18.2',
+        'fsspec>=2024.10.0',
+        'gcsfs>=2024.10.0',
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
