@@ -9,8 +9,8 @@ setup(
     url='https://github.com/jindrvo1/blackfriday',
     packages=find_packages(),
     install_requires=[
-        'pandas==2.2.3',
-        'scikit-learn==1.5.2'
+        'pandas>=2.2.3',
+        'scikit-learn>=1.5.2'
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
