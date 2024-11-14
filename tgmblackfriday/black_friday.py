@@ -17,7 +17,6 @@ class EncodingType(Enum):
 class ProductCategoriesEncoder:
     product_category_cols: list[str] = ['Product_Category_1', 'Product_Category_2', 'Product_Category_3']
 
-
     def __init__(self, encoding: EncodingType, product_category_cols: list[str] = product_category_cols):
         self.encoding = encoding
         self.product_category_cols = product_category_cols
@@ -74,6 +73,14 @@ class BlackFridayDataset:
 
     product_category_cols: list[str] = ['Product_Category_1', 'Product_Category_2', 'Product_Category_3']
 
+    feature_encodings: dict[str, EncodingType] = {
+        'Age': EncodingType.ONE_HOT,
+        'Occupation': EncodingType.ORDINAL,
+        'Gender': EncodingType.BINARY,
+        'City_Category': EncodingType.ONE_HOT,
+        'Product_Category': EncodingType.ONE_HOT
+    }
+
 
     def __init__(self, path: str, test_path: str = None):
         if path.startswith('gs://'):
@@ -86,7 +93,7 @@ class BlackFridayDataset:
             self.df_test = self._load_data_file(test_path) if test_path else None
 
 
-    def preprocess_dfs(self, encodings: dict[str, EncodingType], return_res: bool = True) -> None | tuple[pd.DataFrame, pd.DataFrame | None]:
+    def preprocess_dfs(self, encodings: dict[str, EncodingType] = None, return_res: bool = True) -> None | tuple[pd.DataFrame, pd.DataFrame | None]:
         """Processes the features in the loaded dataframes to be ready to be used
         in a model. Specific processing steps for each feature are further
         explained in the relevant functions
@@ -100,6 +107,7 @@ class BlackFridayDataset:
                 the test dataset was loaded
         """
 
+        encodings = self.feature_encodings if encodings is None else encodings
 
         cols_to_drop = set(self.demographic_cols + ['Product_Category']) - set(encodings.keys())
         self.df = self.df.drop(columns=cols_to_drop)
