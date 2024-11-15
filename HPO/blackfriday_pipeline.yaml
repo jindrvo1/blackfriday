@@ -1,0 +1,657 @@
+# PIPELINE DEFINITION
+# Name: blackfriday-pipeline
+# Inputs:
+#    eval_metric: str [Default: 'rmse']
+#    gcs_test_data_path: str [Default: 'gs://blackfridaydataset/source_data/test.csv']
+#    gcs_train_data_path: str [Default: 'gs://blackfridaydataset/source_data/train.csv']
+#    learning_rate: float [Default: 0.1]
+#    max_depth: int [Default: 6.0]
+#    min_child_weight: int [Default: 1.0]
+#    n_estimators: int [Default: 300.0]
+#    objective: str [Default: 'reg:squarederror']
+# Outputs:
+#    calc-metrics-2-metrics_output: system.Metrics
+#    calc-metrics-metrics_output: system.Metrics
+components:
+  comp-calc-metrics:
+    executorLabel: exec-calc-metrics
+    inputDefinitions:
+      artifacts:
+        y_pred_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_true_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-calc-metrics-2:
+    executorLabel: exec-calc-metrics-2
+    inputDefinitions:
+      artifacts:
+        y_pred_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_true_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-predict:
+    executorLabel: exec-predict
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-predict-2:
+    executorLabel: exec-predict-2
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-predict-3:
+    executorLabel: exec-predict-3
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      parameters:
+        gcs_test_data_path:
+          parameterType: STRING
+        gcs_train_data_path:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        X_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        X_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_val_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_val_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        eval_metric:
+          defaultValue: rmse
+          isOptional: true
+          parameterType: STRING
+        learning_rate:
+          defaultValue: 0.1
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        max_depth:
+          defaultValue: 6.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        min_child_weight:
+          defaultValue: 1.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        n_estimators:
+          defaultValue: 300.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        objective:
+          defaultValue: reg:squarederror
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        model_output:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-calc-metrics:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - calc_metrics
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef calc_metrics(\n    y_true_input: Input[Dataset],\n    y_pred_input:\
+          \ Input[Dataset],\n    metrics_output: Output[Metrics],\n):\n    import\
+          \ pandas as pd\n    from sklearn.metrics import (mean_absolute_error, mean_squared_error,\n\
+          \                                 root_mean_squared_error)\n\n    y_true\
+          \ = pd.read_csv(y_true_input.path)\n    y_pred = pd.read_csv(y_pred_input.path)\n\
+          \n    metrics_output.log_metric('rmse', root_mean_squared_error(y_true,\
+          \ y_pred))\n    metrics_output.log_metric('mse', mean_squared_error(y_true,\
+          \ y_pred))\n    metrics_output.log_metric('mae', mean_absolute_error(y_true,\
+          \ y_pred))\n\n"
+        image: python:3.11
+    exec-calc-metrics-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - calc_metrics
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef calc_metrics(\n    y_true_input: Input[Dataset],\n    y_pred_input:\
+          \ Input[Dataset],\n    metrics_output: Output[Metrics],\n):\n    import\
+          \ pandas as pd\n    from sklearn.metrics import (mean_absolute_error, mean_squared_error,\n\
+          \                                 root_mean_squared_error)\n\n    y_true\
+          \ = pd.read_csv(y_true_input.path)\n    y_pred = pd.read_csv(y_pred_input.path)\n\
+          \n    metrics_output.log_metric('rmse', root_mean_squared_error(y_true,\
+          \ y_pred))\n    metrics_output.log_metric('mse', mean_squared_error(y_true,\
+          \ y_pred))\n    metrics_output.log_metric('mae', mean_absolute_error(y_true,\
+          \ y_pred))\n\n"
+        image: python:3.11
+    exec-predict:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef predict(\n    model_input: Input[Model],\n    X_input: Input[Dataset],\n\
+          \    y_output: Output[Dataset],\n):\n    import joblib\n    import pandas\
+          \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
+          \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
+          \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
+        image: python:3.11
+    exec-predict-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef predict(\n    model_input: Input[Model],\n    X_input: Input[Dataset],\n\
+          \    y_output: Output[Dataset],\n):\n    import joblib\n    import pandas\
+          \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
+          \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
+          \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
+        image: python:3.11
+    exec-predict-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef predict(\n    model_input: Input[Model],\n    X_input: Input[Dataset],\n\
+          \    y_output: Output[Dataset],\n):\n    import joblib\n    import pandas\
+          \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
+          \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
+          \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
+        image: python:3.11
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'git+https://github.com/jindrvo1/blackfriday' 'google-cloud-storage>=2.18.2'\
+          \ 'fsspec>=2024.10.0' 'gcsfs>=2024.10.0' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_data(\n    gcs_train_data_path: str,\n    gcs_test_data_path:\
+          \ str,\n    X_train_output: Output[Dataset],\n    y_train_output: Output[Dataset],\n\
+          \    X_val_output: Output[Dataset],\n    y_val_output: Output[Dataset],\n\
+          \    X_test_output: Output[Dataset],\n):\n    from tgmblackfriday import\
+          \ BlackFridayDataset\n\n    dataset = BlackFridayDataset(gcs_train_data_path,\
+          \ gcs_test_data_path)\n    dataset.preprocess_dfs(return_res=False)\n\n\
+          \    X_train, y_train, X_val, y_val, X_test = dataset.prepare_features_and_target(test_size=0.2,\
+          \ shuffle=True)\n\n    X_train.to_csv(X_train_output.path, index=False)\n\
+          \    y_train.to_csv(y_train_output.path, index=False)\n    X_val.to_csv(X_val_output.path,\
+          \ index=False)\n    y_val.to_csv(y_val_output.path, index=False)\n    X_test.to_csv(X_test_output.path,\
+          \ index=False)\n\n"
+        image: python:3.11
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    X_train_input: Input[Dataset],\n    y_train_input:\
+          \ Input[Dataset],\n    X_val_input: Input[Dataset],\n    y_val_input: Input[Dataset],\n\
+          \    model_output: Output[Model],\n    n_estimators: int = 300,\n    max_depth:\
+          \ int = 6,\n    min_child_weight: int = 1,\n    learning_rate: float = 0.1,\n\
+          \    objective: str = 'reg:squarederror',\n    eval_metric: str = 'rmse',\n\
+          ):\n    import joblib\n    import pandas as pd\n    from xgboost.sklearn\
+          \ import XGBRegressor\n\n    X_train = pd.read_csv(X_train_input.path)\n\
+          \    y_train = pd.read_csv(y_train_input.path)\n\n    X_val = pd.read_csv(X_val_input.path)\n\
+          \    y_val = pd.read_csv(y_val_input.path)\n\n    model = XGBRegressor(\n\
+          \        n_estimators=n_estimators,\n        objective=objective,\n    \
+          \    eval_metric=eval_metric,\n        learning_rate=learning_rate,\n  \
+          \      max_depth=max_depth,\n        min_child_weight=min_child_weight,\n\
+          \        early_stopping_rounds=10,\n        seed=0\n    )\n\n    model =\
+          \ model.fit(\n        X_train, y_train,\n        eval_set=[(X_val, y_val)],\n\
+          \        verbose=50\n    )\n\n    joblib.dump(model, model_output.path)\n\
+          \n"
+        image: python:3.11
+pipelineInfo:
+  name: blackfriday-pipeline
+root:
+  dag:
+    outputs:
+      artifacts:
+        calc-metrics-2-metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: calc-metrics-2
+        calc-metrics-metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: calc-metrics
+    tasks:
+      calc-metrics:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-calc-metrics
+        dependentTasks:
+        - predict
+        - prepare-data
+        inputs:
+          artifacts:
+            y_pred_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_output
+                producerTask: predict
+            y_true_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_val_output
+                producerTask: prepare-data
+        taskInfo:
+          name: validation-metrics
+      calc-metrics-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-calc-metrics-2
+        dependentTasks:
+        - predict-2
+        - prepare-data
+        inputs:
+          artifacts:
+            y_pred_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_output
+                producerTask: predict-2
+            y_true_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_train_output
+                producerTask: prepare-data
+        taskInfo:
+          name: train-metrics
+      predict:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_val_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-validation
+      predict-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict-2
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_train_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-train
+      predict-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict-3
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_test_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-test
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        inputs:
+          parameters:
+            gcs_test_data_path:
+              componentInputParameter: gcs_test_data_path
+            gcs_train_data_path:
+              componentInputParameter: gcs_train_data_path
+        taskInfo:
+          name: prepare-data
+      train-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-data
+        inputs:
+          artifacts:
+            X_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_train_output
+                producerTask: prepare-data
+            X_val_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_val_output
+                producerTask: prepare-data
+            y_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_train_output
+                producerTask: prepare-data
+            y_val_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_val_output
+                producerTask: prepare-data
+          parameters:
+            eval_metric:
+              componentInputParameter: eval_metric
+            learning_rate:
+              componentInputParameter: learning_rate
+            max_depth:
+              componentInputParameter: max_depth
+            min_child_weight:
+              componentInputParameter: min_child_weight
+            n_estimators:
+              componentInputParameter: n_estimators
+            objective:
+              componentInputParameter: objective
+        taskInfo:
+          name: train-model
+  inputDefinitions:
+    parameters:
+      eval_metric:
+        defaultValue: rmse
+        isOptional: true
+        parameterType: STRING
+      gcs_test_data_path:
+        defaultValue: gs://blackfridaydataset/source_data/test.csv
+        parameterType: STRING
+      gcs_train_data_path:
+        defaultValue: gs://blackfridaydataset/source_data/train.csv
+        parameterType: STRING
+      learning_rate:
+        defaultValue: 0.1
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      max_depth:
+        defaultValue: 6.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      min_child_weight:
+        defaultValue: 1.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      n_estimators:
+        defaultValue: 300.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      objective:
+        defaultValue: reg:squarederror
+        isOptional: true
+        parameterType: STRING
+  outputDefinitions:
+    artifacts:
+      calc-metrics-2-metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      calc-metrics-metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0
