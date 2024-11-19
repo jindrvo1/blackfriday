@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import xgboost
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
@@ -12,6 +13,21 @@ class EncodingType(Enum):
     BINARY = 0
     ORDINAL = 1
     ONE_HOT = 2
+
+
+class ReportValRmseCallback(xgboost.callback.TrainingCallback):
+    def __init__(self, hpt):
+        self.hpt = hpt
+        self.iteration = 0
+
+    def after_iteration(self, model, epoch, evals_log):
+        self.iteration = epoch
+
+        self.hpt.report_hyperparameter_tuning_metric(
+            hyperparameter_metric_tag=f"val_rmse",
+            metric_value=evals_log['validation_0']['rmse'][-1],
+            global_step=self.iteration
+        )
 
 
 class ProductCategoriesEncoder:
