@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import xgboost
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
@@ -107,6 +108,47 @@ class BlackFridayDataset:
         else:
             self.df = self._load_data_file(path)
             self.df_test = self._load_data_file(test_path) if test_path else None
+
+
+    def validate_data(self):
+        target_col = 'Purchase'
+
+        # Check for presence of all expected columns
+        cols_to_check = ['User_ID', 'Product_ID'] + self.demographic_cols + self.product_category_cols
+        for col in cols_to_check:
+            assert col in self.df.columns, f"Column `{col}` is missing from the train dataset"
+            assert col in self.df_test.columns, f"Column `{col}` is missing from the test dataset"
+
+        assert target_col in self.df.columns, f"Column `{target_col}` is missing from the train dataset"
+
+        # Check for unexpected missing values
+        cols_to_check = self.demographic_cols + [self.product_category_cols[0]]
+        for col in cols_to_check:
+            assert self.df[col].isna().sum() == 0, f"Missing values in column `{col}` of the train dataset"
+            assert self.df_test[col].isna().sum() == 0, f"Missing values in column `{col}` of the test dataset"
+
+        assert self.df[target_col].isna().sum() == 0, f"Missing values in column `{target_col}` of the test dataset"
+
+        # Check that the test dataset does not have values not present in the train dataset
+        # Product categories are handled separately
+        cols_to_check = self.demographic_cols
+        for col in cols_to_check:
+            df_col_unique = set(self.df[col].unique())
+            df_test_col_unique = set(self.df_test[col].unique())
+            diff = df_test_col_unique - df_col_unique
+            assert len(diff) == 0, f"Values `{', '.join(diff)}` in column `{col}` " + \
+                                        f"of the test dataset are not present in the train dataset"
+
+        # Check that the test dataset does not have values not present in the train dataset for product categories
+        df_categories = np.unique(self.df[self.product_category_cols].values.flatten())
+        df_categories = set(df_categories[~np.isnan(df_categories)])
+
+        df_test_categories = np.unique(self.df_test[self.product_category_cols].values.flatten())
+        df_test_categories = set(df_test_categories[~np.isnan(df_test_categories)])
+
+        diff = df_test_categories - df_categories
+        assert len(diff) == 0, f"Values `{', '.join(diff)}` in `Product_Category_*` columns " + \
+                                    f"of the test dataset are not present in the train dataset"
 
 
     def preprocess_dfs(self, encodings: dict[str, EncodingType] = None, return_res: bool = True) -> None | tuple[pd.DataFrame, pd.DataFrame | None]:

@@ -14,6 +14,7 @@ setup(
         'google-cloud-storage>=2.18.2',
         'fsspec>=2024.10.0',
         'gcsfs>=2024.10.0',
+        'xgboost>=2.1.2',
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
