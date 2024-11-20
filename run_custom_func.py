@@ -24,17 +24,17 @@ pipeline_kwargs = {
 }
 
 
-def run_custom_job(credentials):
+def run_custom_job():
     worker_pool_specs = [
         {
             "machine_spec": {
-                "machine_type": "n1-standard-4",
-                "accelerator_type": "ACCELERATOR_TYPE_UNSPECIFIED",
-                "accelerator_count": 0,
+                "machine_type": "n1-highmem-4",
+                "accelerator_type": None,
+                "accelerator_count": None,
             },
             "replica_count": 1,
             "container_spec": {
-                "image_uri": 'europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/blackfriday-pipeline:latest',
+                "image_uri": 'europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/blackfriday-pipeline:test',
                 "command": [],
                 "args": [],
             }
@@ -50,22 +50,12 @@ def run_custom_job(credentials):
 
 
 if __name__ == '__main__':
-    import json
-
     from google.cloud import aiplatform
-    from google.oauth2 import service_account
-
-    with open('gcs_sa.json', 'r') as f:
-        sa_key = json.load(f)
-
-    credentials = service_account.Credentials.from_service_account_info(sa_key)
 
     aiplatform.init(
         project=project_id,
         location=region,
-        # service_account=service_account,
-        credentials=credentials,
-        staging_bucket=f'gs://blackfriday_staging'
+        staging_bucket=f'gs://blackfriday_staging',
     )
 
-    run_custom_job(credentials)
+    run_custom_job()

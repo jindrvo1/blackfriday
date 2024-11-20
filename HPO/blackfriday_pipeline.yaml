@@ -25,6 +25,9 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+      parameters:
+        tag_prefix:
+          parameterType: STRING
     outputDefinitions:
       artifacts:
         metrics_output:
@@ -43,11 +46,32 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+      parameters:
+        tag_prefix:
+          parameterType: STRING
     outputDefinitions:
       artifacts:
         metrics_output:
           artifactType:
             schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-load-and-validate-data:
+    executorLabel: exec-load-and-validate-data
+    inputDefinitions:
+      parameters:
+        gcs_test_data_path:
+          parameterType: STRING
+        gcs_train_data_path:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        df_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
             schemaVersion: 0.0.1
   comp-predict:
     executorLabel: exec-predict
@@ -106,11 +130,15 @@ components:
   comp-prepare-data:
     executorLabel: exec-prepare-data
     inputDefinitions:
-      parameters:
-        gcs_test_data_path:
-          parameterType: STRING
-        gcs_train_data_path:
-          parameterType: STRING
+      artifacts:
+        df_test_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
     outputDefinitions:
       artifacts:
         X_test_output:
@@ -214,15 +242,20 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef calc_metrics(\n    y_true_input: Input[Dataset],\n    y_pred_input:\
-          \ Input[Dataset],\n    metrics_output: Output[Metrics],\n):\n    import\
-          \ pandas as pd\n    from sklearn.metrics import (mean_absolute_error, mean_squared_error,\n\
-          \                                 root_mean_squared_error)\n\n    y_true\
-          \ = pd.read_csv(y_true_input.path)\n    y_pred = pd.read_csv(y_pred_input.path)\n\
-          \n    metrics_output.log_metric('rmse', root_mean_squared_error(y_true,\
-          \ y_pred))\n    metrics_output.log_metric('mse', mean_squared_error(y_true,\
-          \ y_pred))\n    metrics_output.log_metric('mae', mean_absolute_error(y_true,\
-          \ y_pred))\n\n"
-        image: python:3.11
+          \ Input[Dataset],\n    tag_prefix: str,\n    metrics_output: Output[Metrics],\n\
+          ):\n    import json\n    import pandas as pd\n    from sklearn.metrics import\
+          \ (\n        mean_absolute_error,\n        mean_squared_error,\n       \
+          \ root_mean_squared_error\n    )\n\n    y_true = pd.read_csv(y_true_input.path)\n\
+          \    y_pred = pd.read_csv(y_pred_input.path)\n\n    metrics_dict = {\n \
+          \       f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),\n\
+          \        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),\n    \
+          \    f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)\n    }\n\n\
+          \    with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
+          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])\n\
+          \n"
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-calc-metrics-2:
       container:
         args:
@@ -251,15 +284,54 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef calc_metrics(\n    y_true_input: Input[Dataset],\n    y_pred_input:\
-          \ Input[Dataset],\n    metrics_output: Output[Metrics],\n):\n    import\
-          \ pandas as pd\n    from sklearn.metrics import (mean_absolute_error, mean_squared_error,\n\
-          \                                 root_mean_squared_error)\n\n    y_true\
-          \ = pd.read_csv(y_true_input.path)\n    y_pred = pd.read_csv(y_pred_input.path)\n\
-          \n    metrics_output.log_metric('rmse', root_mean_squared_error(y_true,\
-          \ y_pred))\n    metrics_output.log_metric('mse', mean_squared_error(y_true,\
-          \ y_pred))\n    metrics_output.log_metric('mae', mean_absolute_error(y_true,\
-          \ y_pred))\n\n"
-        image: python:3.11
+          \ Input[Dataset],\n    tag_prefix: str,\n    metrics_output: Output[Metrics],\n\
+          ):\n    import json\n    import pandas as pd\n    from sklearn.metrics import\
+          \ (\n        mean_absolute_error,\n        mean_squared_error,\n       \
+          \ root_mean_squared_error\n    )\n\n    y_true = pd.read_csv(y_true_input.path)\n\
+          \    y_pred = pd.read_csv(y_pred_input.path)\n\n    metrics_dict = {\n \
+          \       f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),\n\
+          \        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),\n    \
+          \    f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)\n    }\n\n\
+          \    with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
+          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])\n\
+          \n"
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
+    exec-load-and-validate-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_and_validate_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef load_and_validate_data(\n    gcs_train_data_path: str,\n    gcs_test_data_path:\
+          \ str,\n    df_train_output: Output[Dataset],\n    df_test_output: Output[Dataset],\n\
+          ):\n    from tgmblackfriday import BlackFridayDataset\n\n    dataset = BlackFridayDataset(gcs_train_data_path,\
+          \ gcs_test_data_path)\n    dataset.validate_data()\n    df_train, df_test\
+          \ = dataset.get_dfs()\n\n    df_train.to_csv(df_train_output.path, index=False)\n\
+          \    df_test.to_csv(df_test_output.path, index=False)\n\n"
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-predict:
       container:
         args:
@@ -275,7 +347,8 @@ deploymentSpec:
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
           \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
-          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -292,7 +365,7 @@ deploymentSpec:
           \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
           \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
           \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
-        image: python:3.11
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-predict-2:
       container:
         args:
@@ -308,7 +381,8 @@ deploymentSpec:
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
           \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
-          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -325,7 +399,7 @@ deploymentSpec:
           \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
           \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
           \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
-        image: python:3.11
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-predict-3:
       container:
         args:
@@ -341,7 +415,8 @@ deploymentSpec:
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
           \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
-          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' && \"$0\" \"$@\"\n"
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -358,7 +433,7 @@ deploymentSpec:
           \ as pd\n\n    model = joblib.load(model_input.path)\n\n    X = pd.read_csv(X_input.path)\n\
           \    y_pred = model.predict(X)\n\n    y_pred_df = pd.DataFrame(y_pred)\n\
           \    y_pred_df.to_csv(y_output.path, index=False)\n\n"
-        image: python:3.11
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-prepare-data:
       container:
         args:
@@ -373,9 +448,8 @@ deploymentSpec:
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
-          \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
-          \ 'git+https://github.com/jindrvo1/blackfriday' 'google-cloud-storage>=2.18.2'\
-          \ 'fsspec>=2024.10.0' 'gcsfs>=2024.10.0' && \"$0\" \"$@\"\n"
+          \  python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -387,18 +461,18 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef prepare_data(\n    gcs_train_data_path: str,\n    gcs_test_data_path:\
-          \ str,\n    X_train_output: Output[Dataset],\n    y_train_output: Output[Dataset],\n\
-          \    X_val_output: Output[Dataset],\n    y_val_output: Output[Dataset],\n\
-          \    X_test_output: Output[Dataset],\n):\n    from tgmblackfriday import\
-          \ BlackFridayDataset\n\n    dataset = BlackFridayDataset(gcs_train_data_path,\
-          \ gcs_test_data_path)\n    dataset.preprocess_dfs(return_res=False)\n\n\
+          \ *\n\ndef prepare_data(\n    df_train_input: Input[Dataset],\n    df_test_input:\
+          \ Input[Dataset],\n    X_train_output: Output[Dataset],\n    y_train_output:\
+          \ Output[Dataset],\n    X_val_output: Output[Dataset],\n    y_val_output:\
+          \ Output[Dataset],\n    X_test_output: Output[Dataset],\n):\n    from tgmblackfriday\
+          \ import BlackFridayDataset\n\n    dataset = BlackFridayDataset(df_train_input.path,\
+          \ df_test_input.path)\n    dataset.preprocess_dfs(return_res=False)\n\n\
           \    X_train, y_train, X_val, y_val, X_test = dataset.prepare_features_and_target(test_size=0.2,\
           \ shuffle=True)\n\n    X_train.to_csv(X_train_output.path, index=False)\n\
           \    y_train.to_csv(y_train_output.path, index=False)\n    X_val.to_csv(X_val_output.path,\
           \ index=False)\n    y_val.to_csv(y_val_output.path, index=False)\n    X_test.to_csv(X_test_output.path,\
           \ index=False)\n\n"
-        image: python:3.11
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-train-model:
       container:
         args:
@@ -414,7 +488,8 @@ deploymentSpec:
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
           \  python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
-          \ 'xgboost>=2.1.2' 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+          \ 'xgboost>=2.1.2' 'scikit-learn>=1.5.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -431,18 +506,20 @@ deploymentSpec:
           \    model_output: Output[Model],\n    n_estimators: int = 300,\n    max_depth:\
           \ int = 6,\n    min_child_weight: int = 1,\n    learning_rate: float = 0.1,\n\
           \    objective: str = 'reg:squarederror',\n    eval_metric: str = 'rmse',\n\
-          ):\n    import joblib\n    import pandas as pd\n    from xgboost.sklearn\
-          \ import XGBRegressor\n\n    X_train = pd.read_csv(X_train_input.path)\n\
+          ):\n    import joblib\n    import hypertune\n    import pandas as pd\n \
+          \   from xgboost.sklearn import XGBRegressor\n    from tgmblackfriday import\
+          \ ReportValRmseCallback\n\n\n    X_train = pd.read_csv(X_train_input.path)\n\
           \    y_train = pd.read_csv(y_train_input.path)\n\n    X_val = pd.read_csv(X_val_input.path)\n\
-          \    y_val = pd.read_csv(y_val_input.path)\n\n    model = XGBRegressor(\n\
-          \        n_estimators=n_estimators,\n        objective=objective,\n    \
-          \    eval_metric=eval_metric,\n        learning_rate=learning_rate,\n  \
-          \      max_depth=max_depth,\n        min_child_weight=min_child_weight,\n\
-          \        early_stopping_rounds=10,\n        seed=0\n    )\n\n    model =\
-          \ model.fit(\n        X_train, y_train,\n        eval_set=[(X_val, y_val)],\n\
-          \        verbose=50\n    )\n\n    joblib.dump(model, model_output.path)\n\
-          \n"
-        image: python:3.11
+          \    y_val = pd.read_csv(y_val_input.path)\n\n    hpt = hypertune.HyperTune()\n\
+          \    report_val_rmse_callback = ReportValRmseCallback(hpt=hpt)\n\n    model\
+          \ = XGBRegressor(\n        n_estimators=n_estimators,\n        objective=objective,\n\
+          \        eval_metric=eval_metric,\n        learning_rate=learning_rate,\n\
+          \        max_depth=max_depth,\n        min_child_weight=min_child_weight,\n\
+          \        early_stopping_rounds=10,\n        callbacks=[report_val_rmse_callback],\n\
+          \        seed=0\n    )\n\n    model = model.fit(\n        X_train, y_train,\n\
+          \        eval_set=[(X_val, y_val)],\n        verbose=50\n    )\n\n    joblib.dump(model,\
+          \ model_output.path)\n\n"
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
 pipelineInfo:
   name: blackfriday-pipeline
 root:
@@ -476,6 +553,10 @@ root:
               taskOutputArtifact:
                 outputArtifactKey: y_val_output
                 producerTask: prepare-data
+          parameters:
+            tag_prefix:
+              runtimeValue:
+                constant: val
         taskInfo:
           name: validation-metrics
       calc-metrics-2:
@@ -496,8 +577,25 @@ root:
               taskOutputArtifact:
                 outputArtifactKey: y_train_output
                 producerTask: prepare-data
+          parameters:
+            tag_prefix:
+              runtimeValue:
+                constant: train
         taskInfo:
           name: train-metrics
+      load-and-validate-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-and-validate-data
+        inputs:
+          parameters:
+            gcs_test_data_path:
+              componentInputParameter: gcs_test_data_path
+            gcs_train_data_path:
+              componentInputParameter: gcs_train_data_path
+        taskInfo:
+          name: load-and-validate-data
       predict:
         cachingOptions:
           enableCache: true
@@ -563,12 +661,18 @@ root:
           enableCache: true
         componentRef:
           name: comp-prepare-data
+        dependentTasks:
+        - load-and-validate-data
         inputs:
-          parameters:
-            gcs_test_data_path:
-              componentInputParameter: gcs_test_data_path
-            gcs_train_data_path:
-              componentInputParameter: gcs_train_data_path
+          artifacts:
+            df_test_input:
+              taskOutputArtifact:
+                outputArtifactKey: df_test_output
+                producerTask: load-and-validate-data
+            df_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: df_train_output
+                producerTask: load-and-validate-data
         taskInfo:
           name: prepare-data
       train-model:

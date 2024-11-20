@@ -1,24 +1,48 @@
 import argparse
+from dotenv import dotenv_values
 import json
 
-from google.cloud import aiplatform
+from google.cloud import aiplatform, secretmanager
 from google.oauth2 import service_account
-from kfp import compiler, dsl
+from kfp import compiler, dsl, local
 from kfp.dsl import Dataset, Input, Metrics, Model, Output, component
 
+env_vars = dotenv_values('.env')
+
+KFP_BASE_IMAGE = env_vars['KFP_BASE_IMAGE']
+
+
 @component(
-    base_image='python:3.11',
+    base_image=KFP_BASE_IMAGE,
     packages_to_install=[
-        'pandas>=2.2.3',
         'git+https://github.com/jindrvo1/blackfriday',
-        'google-cloud-storage>=2.18.2',
-        'fsspec>=2024.10.0',
-        'gcsfs>=2024.10.0',
+    ]
+)
+def load_and_validate_data(
+    gcs_train_data_path: str,
+    gcs_test_data_path: str,
+    df_train_output: Output[Dataset],
+    df_test_output: Output[Dataset],
+):
+    from tgmblackfriday import BlackFridayDataset
+
+    dataset = BlackFridayDataset(gcs_train_data_path, gcs_test_data_path)
+    dataset.validate_data()
+    df_train, df_test = dataset.get_dfs()
+
+    df_train.to_csv(df_train_output.path, index=False)
+    df_test.to_csv(df_test_output.path, index=False)
+
+
+@component(
+    base_image=KFP_BASE_IMAGE,
+    packages_to_install=[
+        'git+https://github.com/jindrvo1/blackfriday',
     ]
 )
 def prepare_data(
-    gcs_train_data_path: str,
-    gcs_test_data_path: str,
+    df_train_input: Input[Dataset],
+    df_test_input: Input[Dataset],
     X_train_output: Output[Dataset],
     y_train_output: Output[Dataset],
     X_val_output: Output[Dataset],
@@ -27,7 +51,7 @@ def prepare_data(
 ):
     from tgmblackfriday import BlackFridayDataset
 
-    dataset = BlackFridayDataset(gcs_train_data_path, gcs_test_data_path)
+    dataset = BlackFridayDataset(df_train_input.path, df_test_input.path)
     dataset.preprocess_dfs(return_res=False)
 
     X_train, y_train, X_val, y_val, X_test = dataset.prepare_features_and_target(test_size=0.2, shuffle=True)
@@ -40,11 +64,13 @@ def prepare_data(
 
 
 @component(
-    base_image='python:3.11',
+    base_image=KFP_BASE_IMAGE,
     packages_to_install=[
         'pandas>=2.2.3',
         'xgboost>=2.1.2',
         'scikit-learn>=1.5.2',
+        'git+https://github.com/jindrvo1/blackfriday',
+        'cloudml-hypertune==0.1.0.dev6',
     ]
 )
 def train_model(
@@ -61,14 +87,20 @@ def train_model(
     eval_metric: str = 'rmse',
 ):
     import joblib
+    import hypertune
     import pandas as pd
     from xgboost.sklearn import XGBRegressor
+    from tgmblackfriday import ReportValRmseCallback
+
 
     X_train = pd.read_csv(X_train_input.path)
     y_train = pd.read_csv(y_train_input.path)
 
     X_val = pd.read_csv(X_val_input.path)
     y_val = pd.read_csv(y_val_input.path)
+
+    hpt = hypertune.HyperTune()
+    report_val_rmse_callback = ReportValRmseCallback(hpt=hpt)
 
     model = XGBRegressor(
         n_estimators=n_estimators,
@@ -78,6 +110,7 @@ def train_model(
         max_depth=max_depth,
         min_child_weight=min_child_weight,
         early_stopping_rounds=10,
+        callbacks=[report_val_rmse_callback],
         seed=0
     )
 
@@ -91,11 +124,13 @@ def train_model(
 
 
 @component(
-    base_image='python:3.11',
+    base_image=KFP_BASE_IMAGE,
     packages_to_install=[
         'pandas>=2.2.3',
         'xgboost>=2.1.2',
         'joblib>=1.4.2',
+        'git+https://github.com/jindrvo1/blackfriday',
+        'cloudml-hypertune==0.1.0.dev6',
     ]
 )
 def predict(
@@ -116,7 +151,7 @@ def predict(
 
 
 @component(
-    base_image='python:3.11',
+    base_image=KFP_BASE_IMAGE,
     packages_to_install=[
         'pandas>=2.2.3',
         'scikit-learn>=1.5.2',
@@ -125,8 +160,10 @@ def predict(
 def calc_metrics(
     y_true_input: Input[Dataset],
     y_pred_input: Input[Dataset],
+    tag_prefix: str,
     metrics_output: Output[Metrics],
 ):
+    import json
     import pandas as pd
     from sklearn.metrics import (
         mean_absolute_error,
@@ -137,9 +174,50 @@ def calc_metrics(
     y_true = pd.read_csv(y_true_input.path)
     y_pred = pd.read_csv(y_pred_input.path)
 
-    metrics_output.log_metric('rmse', root_mean_squared_error(y_true, y_pred))
-    metrics_output.log_metric('mse', mean_squared_error(y_true, y_pred))
-    metrics_output.log_metric('mae', mean_absolute_error(y_true, y_pred))
+    metrics_dict = {
+        f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),
+        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),
+        f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)
+    }
+
+    with open(metrics_output.path, 'w') as f:
+        json.dump(metrics_dict, f)
+
+    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])
+    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])
+    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])
+
+
+# @component(
+#     base_image=KFP_BASE_IMAGE,
+#     packages_to_install=[
+#         'cloudml-hypertune==0.1.0.dev6'
+#     ]
+# )
+# def log_metrics(metrics_input: Input[Metrics], tag_prefix: str):
+#     import hypertune
+#     import json
+
+#     with open(metrics_input.path) as f:
+#         metrics = json.load(f)
+
+#     rmse = metrics.get(f'{tag_prefix}_rmse')
+#     mse = metrics.get(f'{tag_prefix}_mse')
+#     mae = metrics.get(f'{tag_prefix}_mae')
+
+#     hpt = hypertune.HyperTune()
+#     hpt.report_hyperparameter_tuning_metric(
+#         hyperparameter_metric_tag=f"{tag_prefix}_rmse",
+#         metric_value=rmse
+#     )
+#     hpt.report_hyperparameter_tuning_metric(
+#         hyperparameter_metric_tag=f"{tag_prefix}_mse",
+#         metric_value=mse
+#     )
+#     hpt.report_hyperparameter_tuning_metric(
+#         hyperparameter_metric_tag=f"{tag_prefix}_mae",
+#         metric_value=mae
+#     )
 
 
 @dsl.pipeline()
@@ -153,9 +231,14 @@ def blackfriday_pipeline(
     objective: str = 'reg:squarederror',
     eval_metric: str = 'rmse',
 ):
-    data = prepare_data(
+    load_data_job = load_and_validate_data(
         gcs_train_data_path=gcs_train_data_path,
-        gcs_test_data_path=gcs_test_data_path,
+        gcs_test_data_path=gcs_test_data_path
+    )
+
+    data = prepare_data(
+        df_train_input=load_data_job.outputs['df_train_output'],
+        df_test_input=load_data_job.outputs['df_test_output'],
     )
 
     X_train = data.outputs['X_train_output']
@@ -180,38 +263,45 @@ def blackfriday_pipeline(
     y_val_pred_job = predict(
         model_input=model_job.outputs['model_output'],
         X_input=X_val,
-    )
-    y_val_pred_job.set_display_name('predict-validation')
+    ).set_display_name('predict-validation')
 
     y_train_pred_job = predict(
         model_input=model_job.outputs['model_output'],
         X_input=X_train,
-    )
-    y_train_pred_job.set_display_name('predict-train')
+    ).set_display_name('predict-train')
 
     y_test_pred_job = predict(
         model_input=model_job.outputs['model_output'],
         X_input=X_test,
-    )
-    y_test_pred_job.set_display_name('predict-test')
+    ).set_display_name('predict-test')
 
     val_metrics = calc_metrics(
         y_true_input=y_val,
         y_pred_input=y_val_pred_job.outputs['y_output'],
-    )
-    val_metrics.set_display_name('validation-metrics')
+        tag_prefix='val',
+    ).set_display_name('validation-metrics')
 
     train_metrics = calc_metrics(
         y_true_input=y_train,
         y_pred_input=y_train_pred_job.outputs['y_output'],
-    )
-    train_metrics.set_display_name('train-metrics')
+        tag_prefix='train',
+    ).set_display_name('train-metrics')
+
+    # log_val_metrics_to_hypertune = log_metrics(
+    #     metrics_input=val_metrics.outputs['metrics_output'],
+    #     tag_prefix='val',
+    # ).set_display_name('log-val-metrics-to-hypertune')
+
+    # log_train_metrics_to_hypertune = log_metrics(
+    #     metrics_input=train_metrics.outputs['metrics_output'],
+    #     tag_prefix='train',
+    # ).set_display_name('log-train-metrics-to-hypertune')
 
 
 def init_pipeline(
     package_path: str,
     gcs_train_data_path: str,
-    gcs_test_data_path: str,
+    gcs_test_data_path: str
 ):
     compiler.Compiler().compile(
         pipeline_func=blackfriday_pipeline,
@@ -240,14 +330,12 @@ def run_pipeline(
     job.run(service_account=service_account)
 
 
-if __name__ == '__main__':
-    with open('gcs_sa.json', 'r') as f:
-        sa_key = json.load(f)
-
-    credentials = service_account.Credentials.from_service_account_info(sa_key)
-
+def get_args_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--init_pipeline', action='store_true')
+    parser.add_argument('--run_locally', action='store_true')
+    parser.add_argument('--sa_secret_name', type=str, default='blackfriday_pipeline_sa_key')
     parser.add_argument('--gcs_train_data_path', type=str, default='gs://blackfridaydataset/source_data/train.csv')
     parser.add_argument('--gcs_test_data_path', type=str, default='gs://blackfridaydataset/source_data/test.csv')
     parser.add_argument('--project_id', type=str, default='ml-spec-demo2')
@@ -260,7 +348,27 @@ if __name__ == '__main__':
     parser.add_argument('--min_child_weight', type=int, default=1)
     parser.add_argument('--learning_rate', type=float, default=0.1)
 
+    return parser
+
+
+def get_credentials(secret_name: str) -> service_account.Credentials:
+    with open('secrets_manager_sa.json', 'r') as f:
+        secret_manager_sa_key = json.load(f)
+        credentials_secret_manager = service_account.Credentials.from_service_account_info(secret_manager_sa_key)
+
+        secret_manager_client = secretmanager.SecretManagerServiceClient(credentials=credentials_secret_manager)
+        response = secret_manager_client.access_secret_version(name=secret_name)
+        service_account_info = response.payload.data.decode("UTF-8")
+
+    credentials = service_account.Credentials.from_service_account_info(json.loads(service_account_info))
+
+    return credentials
+
+
+if __name__ == '__main__':
+    parser = get_args_parser()
     args = parser.parse_args()
+
     hyperparameters = {
         'n_estimators': args.n_estimators,
         'max_depth': args.max_depth,
@@ -272,10 +380,28 @@ if __name__ == '__main__':
         init_pipeline(
             package_path=args.package_path,
             gcs_train_data_path=args.gcs_train_data_path,
-            gcs_test_data_path=args.gcs_test_data_path
+            gcs_test_data_path=args.gcs_test_data_path,
         )
-
+        print('Pipeline initialized')
         exit(0)
+
+    if args.run_locally:
+        local.init(runner=local.DockerRunner())
+
+        blackfriday_pipeline(
+            gcs_train_data_path=args.gcs_train_data_path,
+            gcs_test_data_path=args.gcs_test_data_path,
+            n_estimators=args.n_estimators,
+            max_depth=args.max_depth,
+            min_child_weight=args.min_child_weight,
+            learning_rate=args.learning_rate,
+            objective='reg:squarederror',
+            eval_metric='rmse',
+        )
+        exit(0)
+
+    sa_secret_name = f'projects/{args.project_id}/secrets/{args.sa_secret_name}/versions/latest'
+    credentials = get_credentials(sa_secret_name)
 
     aiplatform.init(
         project=args.project_id,
