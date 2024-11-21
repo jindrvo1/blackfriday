@@ -9,6 +9,15 @@ from kfp.dsl import Dataset, Input, Metrics, Model, Output, component
 
 env_vars = dotenv_values('.env')
 
+PROJECT_ID = env_vars['PROJECT_ID']
+REGION = env_vars['REGION']
+SERVICE_ACCOUNT = env_vars['SERVICE_ACCOUNT']
+SA_SECRETS_NAME = env_vars['SA_SECRETS_NAME']
+SECRETS_SERVICE_ACCOUNT = env_vars['SECRETS_SERVICE_ACCOUNT']
+GCS_TRAIN_DATA_PATH = env_vars['GCS_TRAIN_DATA_PATH']
+GCS_TEST_DATA_PATH = env_vars['GCS_TEST_DATA_PATH']
+PIPELINE_ROOT = env_vars['PIPELINE_ROOT']
+PACKAGE_PATH = env_vars['PACKAGE_PATH']
 KFP_BASE_IMAGE = env_vars['KFP_BASE_IMAGE']
 
 
@@ -335,14 +344,14 @@ def get_args_parser() -> argparse.ArgumentParser:
 
     parser.add_argument('--init_pipeline', action='store_true')
     parser.add_argument('--run_locally', action='store_true')
-    parser.add_argument('--sa_secret_name', type=str, default='blackfriday_pipeline_sa_key')
-    parser.add_argument('--gcs_train_data_path', type=str, default='gs://blackfridaydataset/source_data/train.csv')
-    parser.add_argument('--gcs_test_data_path', type=str, default='gs://blackfridaydataset/source_data/test.csv')
-    parser.add_argument('--project_id', type=str, default='ml-spec-demo2')
-    parser.add_argument('--region', type=str, default='europe-west3')
-    parser.add_argument('--service_account', type=str, default='gcs-sa@ml-spec-demo2.iam.gserviceaccount.com')
-    parser.add_argument('--pipeline_root', type=str, default='gs://blackfridaydataset/pipeline_root')
-    parser.add_argument('--package_path', type=str, default='blackfriday_pipeline.yaml')
+    parser.add_argument('--sa_secrets_name', type=str, default=SA_SECRETS_NAME)
+    parser.add_argument('--gcs_train_data_path', type=str, default=GCS_TRAIN_DATA_PATH)
+    parser.add_argument('--gcs_test_data_path', type=str, default=GCS_TEST_DATA_PATH)
+    parser.add_argument('--project_id', type=str, default=PROJECT_ID)
+    parser.add_argument('--region', type=str, default=REGION)
+    parser.add_argument('--service_account', type=str, default=SERVICE_ACCOUNT)
+    parser.add_argument('--pipeline_root', type=str, default=PIPELINE_ROOT)
+    parser.add_argument('--package_path', type=str, default=PACKAGE_PATH)
     parser.add_argument('--n_estimators', type=int, default=300)
     parser.add_argument('--max_depth', type=int, default=6)
     parser.add_argument('--min_child_weight', type=int, default=1)
@@ -352,7 +361,7 @@ def get_args_parser() -> argparse.ArgumentParser:
 
 
 def get_credentials(secret_name: str) -> service_account.Credentials:
-    with open('secrets_manager_sa.json', 'r') as f:
+    with open(SECRETS_SERVICE_ACCOUNT, 'r') as f:
         secret_manager_sa_key = json.load(f)
         credentials_secret_manager = service_account.Credentials.from_service_account_info(secret_manager_sa_key)
 
@@ -400,8 +409,8 @@ if __name__ == '__main__':
         )
         exit(0)
 
-    sa_secret_name = f'projects/{args.project_id}/secrets/{args.sa_secret_name}/versions/latest'
-    credentials = get_credentials(sa_secret_name)
+    sa_secrets_name = f'projects/{args.project_id}/secrets/{args.sa_secrets_name}/versions/latest'
+    credentials = get_credentials(sa_secrets_name)
 
     aiplatform.init(
         project=args.project_id,
