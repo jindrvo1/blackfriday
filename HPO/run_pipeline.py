@@ -184,17 +184,17 @@ def calc_metrics(
     y_pred = pd.read_csv(y_pred_input.path)
 
     metrics_dict = {
-        f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),
-        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),
-        f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)
+        f'{tag_prefix}rmse': root_mean_squared_error(y_true, y_pred),
+        f'{tag_prefix}mse': mean_squared_error(y_true, y_pred),
+        f'{tag_prefix}mae': mean_absolute_error(y_true, y_pred)
     }
 
     with open(metrics_output.path, 'w') as f:
         json.dump(metrics_dict, f)
 
-    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])
-    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])
-    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])
+    metrics_output.log_metric(f'{tag_prefix}rmse', metrics_dict[f'{tag_prefix}rmse'])
+    metrics_output.log_metric(f'{tag_prefix}mse', metrics_dict[f'{tag_prefix}mse'])
+    metrics_output.log_metric(f'{tag_prefix}mae', metrics_dict[f'{tag_prefix}mae'])
 
 
 # @component(
@@ -287,13 +287,13 @@ def blackfriday_pipeline(
     val_metrics = calc_metrics(
         y_true_input=y_val,
         y_pred_input=y_val_pred_job.outputs['y_output'],
-        tag_prefix='val',
+        tag_prefix='',
     ).set_display_name('validation-metrics')
 
     train_metrics = calc_metrics(
         y_true_input=y_train,
         y_pred_input=y_train_pred_job.outputs['y_output'],
-        tag_prefix='train',
+        tag_prefix='train_',
     ).set_display_name('train-metrics')
 
     # log_val_metrics_to_hypertune = log_metrics(

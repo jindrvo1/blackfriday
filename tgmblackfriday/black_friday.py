@@ -25,7 +25,7 @@ class ReportValRmseCallback(xgboost.callback.TrainingCallback):
         self.iteration = epoch
 
         self.hpt.report_hyperparameter_tuning_metric(
-            hyperparameter_metric_tag=f"val_rmse",
+            hyperparameter_metric_tag=f"rmse",
             metric_value=evals_log['validation_0']['rmse'][-1],
             global_step=self.iteration
         )

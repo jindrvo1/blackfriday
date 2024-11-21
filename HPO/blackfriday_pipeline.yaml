@@ -247,13 +247,13 @@ deploymentSpec:
           \ (\n        mean_absolute_error,\n        mean_squared_error,\n       \
           \ root_mean_squared_error\n    )\n\n    y_true = pd.read_csv(y_true_input.path)\n\
           \    y_pred = pd.read_csv(y_pred_input.path)\n\n    metrics_dict = {\n \
-          \       f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),\n\
-          \        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),\n    \
-          \    f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)\n    }\n\n\
-          \    with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
-          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])\n\
-          \    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])\n\
-          \    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])\n\
+          \       f'{tag_prefix}rmse': root_mean_squared_error(y_true, y_pred),\n\
+          \        f'{tag_prefix}mse': mean_squared_error(y_true, y_pred),\n     \
+          \   f'{tag_prefix}mae': mean_absolute_error(y_true, y_pred)\n    }\n\n \
+          \   with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
+          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}rmse', metrics_dict[f'{tag_prefix}rmse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}mse', metrics_dict[f'{tag_prefix}mse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}mae', metrics_dict[f'{tag_prefix}mae'])\n\
           \n"
         image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-calc-metrics-2:
@@ -289,13 +289,13 @@ deploymentSpec:
           \ (\n        mean_absolute_error,\n        mean_squared_error,\n       \
           \ root_mean_squared_error\n    )\n\n    y_true = pd.read_csv(y_true_input.path)\n\
           \    y_pred = pd.read_csv(y_pred_input.path)\n\n    metrics_dict = {\n \
-          \       f'{tag_prefix}_rmse': root_mean_squared_error(y_true, y_pred),\n\
-          \        f'{tag_prefix}_mse': mean_squared_error(y_true, y_pred),\n    \
-          \    f'{tag_prefix}_mae': mean_absolute_error(y_true, y_pred)\n    }\n\n\
-          \    with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
-          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}_rmse', metrics_dict[f'{tag_prefix}_rmse'])\n\
-          \    metrics_output.log_metric(f'{tag_prefix}_mse', metrics_dict[f'{tag_prefix}_mse'])\n\
-          \    metrics_output.log_metric(f'{tag_prefix}_mae', metrics_dict[f'{tag_prefix}_mae'])\n\
+          \       f'{tag_prefix}rmse': root_mean_squared_error(y_true, y_pred),\n\
+          \        f'{tag_prefix}mse': mean_squared_error(y_true, y_pred),\n     \
+          \   f'{tag_prefix}mae': mean_absolute_error(y_true, y_pred)\n    }\n\n \
+          \   with open(metrics_output.path, 'w') as f:\n        json.dump(metrics_dict,\
+          \ f)\n\n    metrics_output.log_metric(f'{tag_prefix}rmse', metrics_dict[f'{tag_prefix}rmse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}mse', metrics_dict[f'{tag_prefix}mse'])\n\
+          \    metrics_output.log_metric(f'{tag_prefix}mae', metrics_dict[f'{tag_prefix}mae'])\n\
           \n"
         image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
     exec-load-and-validate-data:
@@ -556,7 +556,7 @@ root:
           parameters:
             tag_prefix:
               runtimeValue:
-                constant: val
+                constant: ''
         taskInfo:
           name: validation-metrics
       calc-metrics-2:
@@ -580,7 +580,7 @@ root:
           parameters:
             tag_prefix:
               runtimeValue:
-                constant: train
+                constant: train_
         taskInfo:
           name: train-metrics
       load-and-validate-data:
