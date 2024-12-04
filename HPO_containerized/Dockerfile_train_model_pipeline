@@ -1,0 +1,18 @@
+FROM europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/kfp_base_image:latest
+
+WORKDIR /app
+
+COPY .env /app/.env
+COPY train_model_pipeline.py /app/train_model_pipeline.py
+COPY secrets_manager_sa.json /app/secrets_manager_sa.json
+
+COPY components/train_model/.env /app/components/train_model/.env
+COPY components/train_model/component.py /app/components/train_model/component.py
+
+COPY components/predict/.env /app/components/predict/.env
+COPY components/predict/component.py /app/components/predict/component.py
+
+COPY components/evaluate/.env /app/components/evaluate/.env
+COPY components/evaluate/component.py /app/components/evaluate/component.py
+
+ENTRYPOINT ["python", "train_model_pipeline.py"]

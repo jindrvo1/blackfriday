@@ -1,0 +1,89 @@
+# PIPELINE DEFINITION
+# Name: predict
+# Inputs:
+#    X_input: system.Dataset
+#    model_input: system.Model
+# Outputs:
+#    y_output: system.Dataset
+components:
+  comp-predict:
+    executorLabel: exec-predict
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-predict:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/predict_component:latest
+pipelineInfo:
+  name: predict
+root:
+  dag:
+    outputs:
+      artifacts:
+        y_output:
+          artifactSelectors:
+          - outputArtifactKey: y_output
+            producerSubtask: predict
+    tasks:
+      predict:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict
+        inputs:
+          artifacts:
+            X_input:
+              componentInputArtifact: X_input
+            model_input:
+              componentInputArtifact: model_input
+        taskInfo:
+          name: predict
+  inputDefinitions:
+    artifacts:
+      X_input:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      model_input:
+        artifactType:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+  outputDefinitions:
+    artifacts:
+      y_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0

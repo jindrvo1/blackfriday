@@ -1,0 +1,93 @@
+# PIPELINE DEFINITION
+# Name: load-and-validate-data
+# Inputs:
+#    gcs_test_data_path: str
+#    gcs_train_data_path: str
+# Outputs:
+#    df_test_output: system.Dataset
+#    df_train_output: system.Dataset
+components:
+  comp-load-and-validate-data:
+    executorLabel: exec-load-and-validate-data
+    inputDefinitions:
+      parameters:
+        gcs_test_data_path:
+          parameterType: STRING
+        gcs_train_data_path:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        df_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-load-and-validate-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_and_validate_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/load_and_validate_data_component:latest
+pipelineInfo:
+  name: load-and-validate-data
+root:
+  dag:
+    outputs:
+      artifacts:
+        df_test_output:
+          artifactSelectors:
+          - outputArtifactKey: df_test_output
+            producerSubtask: load-and-validate-data
+        df_train_output:
+          artifactSelectors:
+          - outputArtifactKey: df_train_output
+            producerSubtask: load-and-validate-data
+    tasks:
+      load-and-validate-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-and-validate-data
+        inputs:
+          parameters:
+            gcs_test_data_path:
+              componentInputParameter: gcs_test_data_path
+            gcs_train_data_path:
+              componentInputParameter: gcs_train_data_path
+        taskInfo:
+          name: load-and-validate-data
+  inputDefinitions:
+    parameters:
+      gcs_test_data_path:
+        parameterType: STRING
+      gcs_train_data_path:
+        parameterType: STRING
+  outputDefinitions:
+    artifacts:
+      df_test_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      df_train_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0

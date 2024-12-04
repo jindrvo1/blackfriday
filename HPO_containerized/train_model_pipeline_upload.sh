@@ -1,0 +1,2 @@
+docker build -f Dockerfile_train_model_pipeline --platform linux/amd64 -t europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/train_model_pipeline:latest .
+docker push europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/train_model_pipeline:latest

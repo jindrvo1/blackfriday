@@ -1,0 +1,140 @@
+# PIPELINE DEFINITION
+# Name: prepare-data
+# Inputs:
+#    df_test_input: system.Dataset
+#    df_train_input: system.Dataset
+# Outputs:
+#    X_test_output: system.Dataset
+#    X_train_output: system.Dataset
+#    X_val_output: system.Dataset
+#    y_train_output: system.Dataset
+#    y_val_output: system.Dataset
+components:
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      artifacts:
+        df_test_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        X_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/prepare_data_component:latest
+pipelineInfo:
+  name: prepare-data
+root:
+  dag:
+    outputs:
+      artifacts:
+        X_test_output:
+          artifactSelectors:
+          - outputArtifactKey: X_test_output
+            producerSubtask: prepare-data
+        X_train_output:
+          artifactSelectors:
+          - outputArtifactKey: X_train_output
+            producerSubtask: prepare-data
+        X_val_output:
+          artifactSelectors:
+          - outputArtifactKey: X_val_output
+            producerSubtask: prepare-data
+        y_train_output:
+          artifactSelectors:
+          - outputArtifactKey: y_train_output
+            producerSubtask: prepare-data
+        y_val_output:
+          artifactSelectors:
+          - outputArtifactKey: y_val_output
+            producerSubtask: prepare-data
+    tasks:
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        inputs:
+          artifacts:
+            df_test_input:
+              componentInputArtifact: df_test_input
+            df_train_input:
+              componentInputArtifact: df_train_input
+        taskInfo:
+          name: prepare-data
+  inputDefinitions:
+    artifacts:
+      df_test_input:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      df_train_input:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+  outputDefinitions:
+    artifacts:
+      X_test_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      X_train_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      X_val_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      y_train_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      y_val_output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0

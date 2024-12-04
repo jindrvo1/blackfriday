@@ -1,0 +1,603 @@
+# PIPELINE DEFINITION
+# Name: blackfriday-containerized-pipeline
+# Inputs:
+#    eval_metric: str [Default: 'rmse']
+#    gcs_test_data_path: str [Default: 'gs://blackfridaydataset/source_data/test.csv']
+#    gcs_train_data_path: str [Default: 'gs://blackfridaydataset/source_data/train.csv']
+#    learning_rate: float [Default: 0.1]
+#    max_depth: int [Default: 6.0]
+#    min_child_weight: int [Default: 1.0]
+#    n_estimators: int [Default: 300.0]
+#    objective: str [Default: 'reg:squarederror']
+# Outputs:
+#    evaluate-2-metrics_output: system.Metrics
+#    evaluate-metrics_output: system.Metrics
+components:
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      artifacts:
+        y_pred_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_true_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        tag_prefix:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-evaluate-2:
+    executorLabel: exec-evaluate-2
+    inputDefinitions:
+      artifacts:
+        y_pred_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_true_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        tag_prefix:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-load-and-validate-data:
+    executorLabel: exec-load-and-validate-data
+    inputDefinitions:
+      parameters:
+        gcs_test_data_path:
+          parameterType: STRING
+        gcs_train_data_path:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        df_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-predict:
+    executorLabel: exec-predict
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-predict-2:
+    executorLabel: exec-predict-2
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-predict-3:
+    executorLabel: exec-predict-3
+    inputDefinitions:
+      artifacts:
+        X_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_input:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        y_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      artifacts:
+        df_test_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        df_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        X_test_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_val_output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        X_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_val_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_val_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        eval_metric:
+          defaultValue: rmse
+          isOptional: true
+          parameterType: STRING
+        learning_rate:
+          defaultValue: 0.1
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        max_depth:
+          defaultValue: 6.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        min_child_weight:
+          defaultValue: 1.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        n_estimators:
+          defaultValue: 300.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        objective:
+          defaultValue: reg:squarederror
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        model_output:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/evaluate_component:latest
+    exec-evaluate-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'scikit-learn>=1.5.2' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/evaluate_component:latest
+    exec-load-and-validate-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_and_validate_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/load_and_validate_data_component:latest
+    exec-predict:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/predict_component:latest
+    exec-predict-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/predict_component:latest
+    exec-predict-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'joblib>=1.4.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/predict_component:latest
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'git+https://github.com/jindrvo1/blackfriday'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/prepare_data_component:latest
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'xgboost>=2.1.2' 'scikit-learn>=1.5.2' 'git+https://github.com/jindrvo1/blackfriday'\
+          \ 'cloudml-hypertune==0.1.0.dev6' && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/train_model_component:latest
+pipelineInfo:
+  name: blackfriday-containerized-pipeline
+root:
+  dag:
+    outputs:
+      artifacts:
+        evaluate-2-metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: evaluate-2
+        evaluate-metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: evaluate
+    tasks:
+      evaluate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate
+        dependentTasks:
+        - predict
+        - prepare-data
+        inputs:
+          artifacts:
+            y_pred_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_output
+                producerTask: predict
+            y_true_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_val_output
+                producerTask: prepare-data
+          parameters:
+            tag_prefix:
+              runtimeValue:
+                constant: ''
+        taskInfo:
+          name: validation-metrics
+      evaluate-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-2
+        dependentTasks:
+        - predict-2
+        - prepare-data
+        inputs:
+          artifacts:
+            y_pred_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_output
+                producerTask: predict-2
+            y_true_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_train_output
+                producerTask: prepare-data
+          parameters:
+            tag_prefix:
+              runtimeValue:
+                constant: train_
+        taskInfo:
+          name: train-metrics
+      load-and-validate-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-and-validate-data
+        inputs:
+          parameters:
+            gcs_test_data_path:
+              componentInputParameter: gcs_test_data_path
+            gcs_train_data_path:
+              componentInputParameter: gcs_train_data_path
+        taskInfo:
+          name: load-and-validate-data
+      predict:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_val_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-validation
+      predict-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict-2
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_train_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-train
+      predict-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict-3
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            X_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_test_output
+                producerTask: prepare-data
+            model_input:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: train-model
+        taskInfo:
+          name: predict-test
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        dependentTasks:
+        - load-and-validate-data
+        inputs:
+          artifacts:
+            df_test_input:
+              taskOutputArtifact:
+                outputArtifactKey: df_test_output
+                producerTask: load-and-validate-data
+            df_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: df_train_output
+                producerTask: load-and-validate-data
+        taskInfo:
+          name: prepare-data
+      train-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-data
+        inputs:
+          artifacts:
+            X_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_train_output
+                producerTask: prepare-data
+            X_val_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_val_output
+                producerTask: prepare-data
+            y_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_train_output
+                producerTask: prepare-data
+            y_val_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_val_output
+                producerTask: prepare-data
+          parameters:
+            eval_metric:
+              componentInputParameter: eval_metric
+            learning_rate:
+              componentInputParameter: learning_rate
+            max_depth:
+              componentInputParameter: max_depth
+            min_child_weight:
+              componentInputParameter: min_child_weight
+            n_estimators:
+              componentInputParameter: n_estimators
+            objective:
+              componentInputParameter: objective
+        taskInfo:
+          name: train-model
+  inputDefinitions:
+    parameters:
+      eval_metric:
+        defaultValue: rmse
+        isOptional: true
+        parameterType: STRING
+      gcs_test_data_path:
+        defaultValue: gs://blackfridaydataset/source_data/test.csv
+        parameterType: STRING
+      gcs_train_data_path:
+        defaultValue: gs://blackfridaydataset/source_data/train.csv
+        parameterType: STRING
+      learning_rate:
+        defaultValue: 0.1
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      max_depth:
+        defaultValue: 6.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      min_child_weight:
+        defaultValue: 1.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      n_estimators:
+        defaultValue: 300.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      objective:
+        defaultValue: reg:squarederror
+        isOptional: true
+        parameterType: STRING
+  outputDefinitions:
+    artifacts:
+      evaluate-2-metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      evaluate-metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0

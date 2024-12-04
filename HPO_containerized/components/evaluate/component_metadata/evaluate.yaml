@@ -1,0 +1,120 @@
+# PIPELINE DEFINITION
+# Name: evaluate
+# Inputs:
+#    tag_prefix: str
+#    y_pred_input: system.Dataset
+#    y_true_input: system.Dataset
+# Outputs:
+#    Output: float
+#    evaluate-metrics_output: system.Metrics
+#    metrics_output: system.Metrics
+components:
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      artifacts:
+        y_pred_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_true_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        tag_prefix:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+      parameters:
+        Output:
+          parameterType: NUMBER_DOUBLE
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas>=2.2.3'\
+          \ 'scikit-learn>=1.5.2' 'cloudml-hypertune==0.1.0.dev6' 'google-cloud-logging>=3.11.3'\
+          \ && \"$0\" \"$@\"\n"
+        - python3
+        - -m
+        - kfp.dsl.executor_main
+        image: europe-west3-docker.pkg.dev/ml-spec-demo2/blackfriday-pipeline/evaluate_component:latest
+pipelineInfo:
+  name: evaluate
+root:
+  dag:
+    outputs:
+      artifacts:
+        evaluate-metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: evaluate
+        metrics_output:
+          artifactSelectors:
+          - outputArtifactKey: metrics_output
+            producerSubtask: evaluate
+      parameters:
+        Output:
+          valueFromParameter:
+            outputParameterKey: Output
+            producerSubtask: evaluate
+    tasks:
+      evaluate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate
+        inputs:
+          artifacts:
+            y_pred_input:
+              componentInputArtifact: y_pred_input
+            y_true_input:
+              componentInputArtifact: y_true_input
+          parameters:
+            tag_prefix:
+              componentInputParameter: tag_prefix
+        taskInfo:
+          name: evaluate
+  inputDefinitions:
+    artifacts:
+      y_pred_input:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+      y_true_input:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+    parameters:
+      tag_prefix:
+        parameterType: STRING
+  outputDefinitions:
+    artifacts:
+      evaluate-metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+      metrics_output:
+        artifactType:
+          schemaTitle: system.Metrics
+          schemaVersion: 0.0.1
+    parameters:
+      Output:
+        parameterType: NUMBER_DOUBLE
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.7.0
