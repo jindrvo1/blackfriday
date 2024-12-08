@@ -1,13 +1,13 @@
+from enum import Enum
 from pathlib import Path
 
 import xgboost
+from xgboost import XGBRegressor
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from google.cloud import storage
-
-from enum import Enum
 
 
 class EncodingType(Enum):
@@ -29,6 +29,38 @@ class ReportValRmseCallback(xgboost.callback.TrainingCallback):
             metric_value=evals_log['validation_0']['rmse'][-1],
             global_step=self.iteration
         )
+
+
+def train_model(
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    X_val: pd.DataFrame,
+    y_val: pd.DataFrame,
+    n_estimators: int,
+    max_depth: int,
+    min_child_weight: int,
+    learning_rate: float,
+    objective: str,
+    eval_metric: str
+) -> XGBRegressor:
+    model = XGBRegressor(
+        n_estimators=n_estimators,
+        objective=objective,
+        eval_metric=eval_metric,
+        learning_rate=learning_rate,
+        max_depth=max_depth,
+        min_child_weight=min_child_weight,
+        early_stopping_rounds=10,
+        seed=0
+    )
+
+    model = model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=50
+    )
+
+    return model
 
 
 class ProductCategoriesEncoder:
