@@ -17,16 +17,17 @@ class EncodingType(Enum):
 
 
 class ReportValRmseCallback(xgboost.callback.TrainingCallback):
-    def __init__(self, hpt):
+    def __init__(self, hpt, metric):
         self.hpt = hpt
+        self.metric = metric
         self.iteration = 0
 
     def after_iteration(self, model, epoch, evals_log):
         self.iteration = epoch
 
         self.hpt.report_hyperparameter_tuning_metric(
-            hyperparameter_metric_tag=f"rmse",
-            metric_value=evals_log['validation_0']['rmse'][-1],
+            hyperparameter_metric_tag=self.metric,
+            metric_value=evals_log['validation_0'][self.metric][-1],
             global_step=self.iteration
         )
 
@@ -41,7 +42,8 @@ def train_model(
     min_child_weight: int,
     learning_rate: float,
     objective: str,
-    eval_metric: str
+    eval_metric: str,
+    hypertune_instance: object = None,
 ) -> XGBRegressor:
     model = XGBRegressor(
         n_estimators=n_estimators,
@@ -54,11 +56,30 @@ def train_model(
         seed=0
     )
 
-    model = model.fit(
-        X_train, y_train,
-        eval_set=[(X_val, y_val)],
-        verbose=50
-    )
+    if hypertune_instance:
+        report_val_rmse_callback = ReportValRmseCallback(
+            hpt=hypertune_instance,
+            metric=eval_metric
+        )
+
+        model = model.fit(
+            X_train, y_train,
+            eval_set=[(X_val, y_val)],
+            verbose=50,
+            callbacks=[report_val_rmse_callback]
+        )
+
+        hypertune_instance.report_hyperparameter_tuning_metric(
+            hyperparameter_metric_tag=eval_metric,
+            metric_value=model.evals_result_['validation_0'][eval_metric][-1],
+            global_step=len(model.evals_result_['validation_0'][eval_metric])
+        )
+    else:
+        model = model.fit(
+            X_train, y_train,
+            eval_set=[(X_val, y_val)],
+            verbose=50,
+        )
 
     return model
 
