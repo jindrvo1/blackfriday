@@ -45,28 +45,28 @@ def train_model(
     eval_metric: str,
     hypertune_instance: object = None,
 ) -> XGBRegressor:
-    model = XGBRegressor(
-        n_estimators=n_estimators,
-        objective=objective,
-        eval_metric=eval_metric,
-        learning_rate=learning_rate,
-        max_depth=max_depth,
-        min_child_weight=min_child_weight,
-        early_stopping_rounds=10,
-        seed=0
-    )
-
     if hypertune_instance:
         report_val_rmse_callback = ReportValRmseCallback(
             hpt=hypertune_instance,
             metric=eval_metric
         )
 
+        model = XGBRegressor(
+            n_estimators=n_estimators,
+            objective=objective,
+            eval_metric=eval_metric,
+            learning_rate=learning_rate,
+            max_depth=max_depth,
+            min_child_weight=min_child_weight,
+            early_stopping_rounds=10,
+            seed=0,
+            callbacks=[report_val_rmse_callback]
+        )
+
         model = model.fit(
             X_train, y_train,
             eval_set=[(X_val, y_val)],
             verbose=50,
-            callbacks=[report_val_rmse_callback]
         )
 
         hypertune_instance.report_hyperparameter_tuning_metric(
@@ -75,6 +75,17 @@ def train_model(
             global_step=len(model.evals_result_['validation_0'][eval_metric])
         )
     else:
+        model = XGBRegressor(
+            n_estimators=n_estimators,
+            objective=objective,
+            eval_metric=eval_metric,
+            learning_rate=learning_rate,
+            max_depth=max_depth,
+            min_child_weight=min_child_weight,
+            early_stopping_rounds=10,
+            seed=0,
+        )
+
         model = model.fit(
             X_train, y_train,
             eval_set=[(X_val, y_val)],
