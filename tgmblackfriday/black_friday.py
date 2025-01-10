@@ -298,12 +298,20 @@ class BlackFridayDataset:
 
     def prepare_features_and_target(
         self,
-        test_size: float = 0.2,
+        test_size: float = 0.3,
         shuffle: bool = True,
         target_col: str = 'Purchase',
         cols_to_drop: list[str] = ['User_ID', 'Product_ID'],
         return_res: bool = True,
-    ) -> None | tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
+    ) -> None | tuple[
+            pd.DataFrame,
+            pd.DataFrame,
+            pd.DataFrame | None,
+            pd.DataFrame | None,
+            pd.DataFrame | None,
+            pd.DataFrame | None,
+            pd.DataFrame | None,
+        ]:
         """Splits the loaded dataframe into train and validation sets and
         extracts the features, except for the `cols_to_drop` columns, and
         the target column from the dataframe, returned as a tuple
@@ -335,7 +343,8 @@ class BlackFridayDataset:
         y = self.df_encoded[target_col]
 
         if test_size:
-            self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X, y, test_size=test_size, shuffle=shuffle)
+            self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(X, y, test_size=test_size, shuffle=shuffle)
+            self.X_val, self.X_test_ind, self.y_val, self.y_test_ind = train_test_split(X_val_test, y_val_test, y, test_size=0.5, shuffle=shuffle)
         else:
             self.X_train = X.sample(frac=1) if shuffle else X
             self.y_train = y.sample(frac=1) if shuffle else y
@@ -343,7 +352,7 @@ class BlackFridayDataset:
 
         self.X_test = self.df_test_encoded.drop(columns=cols_to_drop) if self.df_test_encoded is not None else None
 
-        return (self.X_train, self.y_train, self.X_val, self.y_val, self.X_test) if return_res else None
+        return (self.X_train, self.y_train, self.X_val, self.y_val, self.X_test_ind, self.y_test_ind, self.X_test) if return_res else None
 
 
     def _preprocess_df(self, df: pd.DataFrame, encodings: dict[str, EncodingType]) -> pd.DataFrame:
@@ -403,6 +412,9 @@ class BlackFridayDataset:
         Args:
             df (pd.DataFrame): The dataframe with the 'Gender' column
                 populated by the 'M' and 'F' strings
+            encoding (EncodingType): The encoding type to use. Can be either
+                `EncodingType.ORDINAL` or `EncodingType.ONE_HOT`. Not used
+                in this function, kept for consistency with other functions.
 
         Returns:
             pd.DataFrame: The dataframe with the 'Gender' column's
@@ -450,17 +462,19 @@ class BlackFridayDataset:
 
 
     def _process_age_col(self, df: pd.DataFrame, encoding: EncodingType) -> pd.DataFrame:
-        """Encodes the `Age` column of the `df` dataframe to respective
-        ordinal integer values from 0 to N where N is the number of
-        different age categories in the `df` dataframe
+        """Encodes the `Age` column of the `df` dataframe to either ordinal
+        integer values or one-hot encoded representation depending on the `encoding`
+        parameter.
 
         Args:
             df (pd.DataFrame): The dataframe with the 'Age' column populated
-                with age categories represented by string values
+                with age categories represented by integer values
+            encoding (EncodingType): The encoding type to use. Can be either
+                `EncodingType.ORDINAL` or `EncodingType.ONE_HOT`
 
         Returns:
-            pd.DataFrame: The dataframe with the 'Age' column's values mapped
-                to ordinal integer values
+            pd.DataFrame: The dataframe with the 'Age' column replaced
+                by ordinal integer values or one-hot encoded representation
         """
         if not self._age_encoder:
             self._age_encoder = self._prepare_col_encoder(df, encoding, 'Age')
@@ -469,20 +483,19 @@ class BlackFridayDataset:
 
 
     def _process_city_category_col(self, df: pd.DataFrame, encoding: EncodingType) -> pd.DataFrame:
-        """One-hot encodes the `City_Category` column of the `df` dataframe.
-        The original `City_Category` column is dropped in favour of its encoded
-        representation in N-1 new columns where N is the number of different city
-        categories. The first column of the encoded representation is dropped as
-        the vector [1, 0, 0, ...] can be uniquely identified by a vector of all zeros
+        """Encodes the `City_Category` column of the `df` dataframe to either ordinal
+        integer values or one-hot encoded representation depending on the `encoding`
+        parameter.
 
         Args:
             df (pd.DataFrame): The dataframe with the 'City_Category' column populated
-                with city categories represented by string values
+                with city categories represented by integer values
+            encoding (EncodingType): The encoding type to use. Can be either
+                `EncodingType.ORDINAL` or `EncodingType.ONE_HOT`
 
         Returns:
             pd.DataFrame: The dataframe with the 'City_Category' column replaced
-                by N-1 columns representing its one-hot encoded representation.
-                The output column names are `City_Category_1`, `City_Category_2`, etc
+                by ordinal integer values or one-hot encoded representation
         """
         if not self._city_category_encoder:
             self._city_category_encoder = self._prepare_col_encoder(df, encoding, 'City_Category')
@@ -491,17 +504,19 @@ class BlackFridayDataset:
 
 
     def _process_stay_in_current_city_years_col(self, df: pd.DataFrame, encoding: EncodingType) -> pd.DataFrame:
-        """Encodes the `Stay_In_Current_City_Years` column of the `df` dataframe to
-        respective ordinal integer values from 0 to N where N is the number of
-        different categories in the column
+        """Encodes the `Stay_In_Current_City_Years` column of the `df` dataframe to either ordinal
+        integer values or one-hot encoded representation depending on the `encoding`
+        parameter.
 
         Args:
-            df (pd.DataFrame): The dataframe with the 'Stay_In_Current_City_Years'
-                column populated with string values
+            df (pd.DataFrame): The dataframe with the 'Stay_In_Current_City_Years' column
+                populated with the column's categories represented by integer values
+            encoding (EncodingType): The encoding type to use. Can be either
+                `EncodingType.ORDINAL` or `EncodingType.ONE_HOT`
 
         Returns:
-            pd.DataFrame: The dataframe with the 'Stay_In_Current_City_Years' column's
-                values mapped to ordinal integer values
+            pd.DataFrame: The dataframe with the 'Stay_In_Current_City_Years' column
+                replaced by ordinal integer values or one-hot encoded representation
         """
         if not self._stay_in_current_city_years_encoder:
             self._stay_in_current_city_years_encoder = self._prepare_col_encoder(df, encoding, 'Stay_In_Current_City_Years')
@@ -509,20 +524,19 @@ class BlackFridayDataset:
         return self._encode_col(df, self._stay_in_current_city_years_encoder, 'Stay_In_Current_City_Years')
 
     def _process_occupation_col(self, df: pd.DataFrame, encoding: EncodingType) -> pd.DataFrame:
-        """One-hot encodes the `Occupation` column of the `df` dataframe.
-        The original `Occupation` column is dropped in favour of its encoded
-        representation in N-1 new columns where N is the number of different occupation
-        categories. The first column of the encoded representation is dropped as
-        the vector [1, 0, 0, ...] can be uniquely identified by a vector of all zeros
+        """Encodes the `Occupation` column of the `df` dataframe to either ordinal
+        integer values or one-hot encoded representation depending on the `encoding`
+        parameter.
 
         Args:
             df (pd.DataFrame): The dataframe with the 'Occupation' column populated
                 with occupation categories represented by integer values
+            encoding (EncodingType): The encoding type to use. Can be either
+                `EncodingType.ORDINAL` or `EncodingType.ONE_HOT`
 
         Returns:
             pd.DataFrame: The dataframe with the 'Occupation' column replaced
-                by N-1 columns representing its one-hot encoded representation.
-                The output column names are `Occupation_1`, `Occupation_2`, etc
+                by ordinal integer values or one-hot encoded representation
         """
         if not self._occupation_encoder:
             self._occupation_encoder = self._prepare_col_encoder(df, encoding, 'Occupation')
