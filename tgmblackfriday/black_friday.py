@@ -1,6 +1,7 @@
 from enum import Enum
 from pathlib import Path
 
+import test
 import xgboost
 from xgboost import XGBRegressor
 import numpy as np
@@ -343,8 +344,16 @@ class BlackFridayDataset:
         y = self.df_encoded[target_col]
 
         if test_size:
-            self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(X, y, test_size=0.3, shuffle=shuffle)
-            self.X_val, self.X_test_ind, self.y_val, self.y_test_ind = train_test_split(X_val_test, y_val_test, test_size=0.5, shuffle=shuffle)
+            self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(
+                X, y,
+                test_size=test_size,
+                shuffle=shuffle
+            )
+            self.X_val, self.X_test_ind, self.y_val, self.y_test_ind = train_test_split(
+                X_val_test, y_val_test,
+                test_size=0.5,
+                shuffle=shuffle
+            )
         else:
             self.X_train = X.sample(frac=1) if shuffle else X
             self.y_train = y.sample(frac=1) if shuffle else y
