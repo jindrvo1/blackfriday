@@ -1,7 +1,6 @@
 from enum import Enum
 from pathlib import Path
 
-import test
 import xgboost
 from xgboost import XGBRegressor
 import numpy as np
