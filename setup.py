@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tgm_blackfriday',
-    version='0.3.0',
+    version='0.3.1',
     description='A package for loading and processing the Black Friday dataset.',
     author='Vojtech Jindra',
     author_email='jindravo@gmail.com',

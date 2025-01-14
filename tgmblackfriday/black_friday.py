@@ -89,7 +89,7 @@ def train_model(
         model = model.fit(
             X_train, y_train,
             eval_set=[(X_val, y_val)],
-            verbose=50,
+            verbose=10,
         )
 
     return model
